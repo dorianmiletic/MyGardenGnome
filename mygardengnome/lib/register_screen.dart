@@ -1,8 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'background.dart';
 
-class RegisterScreen extends StatelessWidget {
+class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final _auth = FirebaseAuth.instance;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
+  String _errorMessage = '';
+
+  Future<void> _register() async {
+    try {
+      await _auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      // Success - navigate or show message
+      Navigator.pop(context); // go back to login
+    } on FirebaseAuthException catch (e) {
+      setState(() => _errorMessage = e.message ?? 'Registration failed');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +45,7 @@ class RegisterScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
+                controller: _nameController,
                 decoration: const InputDecoration(
                   labelText: 'Name',
                   prefixIcon: Icon(Icons.person),
@@ -28,6 +54,7 @@ class RegisterScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               TextField(
+                controller: _emailController,
                 decoration: const InputDecoration(
                   labelText: 'Email',
                   prefixIcon: Icon(Icons.email),
@@ -36,6 +63,7 @@ class RegisterScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               TextField(
+                controller: _passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: 'Password',
@@ -43,18 +71,18 @@ class RegisterScreen extends StatelessWidget {
                   border: OutlineInputBorder(),
                 ),
               ),
+              if (_errorMessage.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(_errorMessage, style: const TextStyle(color: Colors.red)),
+              ],
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () {
-                  // TODO: Add registration logic
-                },
+                onPressed: _register,
                 child: const Text('Register'),
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+                onPressed: () => Navigator.pop(context),
                 child: const Text("Already have an account? Login here"),
               ),
             ],

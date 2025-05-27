@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -13,55 +14,268 @@ class SearchPlantsScreen extends StatefulWidget {
 }
 
 class _SearchPlantsScreenState extends State<SearchPlantsScreen> {
-  final String apiKey = '1xO1vrAtD19b-ZVsPXxvJ1J6Ow5bqWx5MH7C8btzGGM';
+  final String apiKey = 'sk-66pW68361bf2b6b4210697';
   List<Plant> plants = [];
   bool isLoading = false;
   String errorMessage = '';
   String query = '';
+  Timer? _debounce;
+  int currentPage = 1;
+  bool hasMore = true;
+  final int maxPlants = 50;
 
-  Future<void> fetchPlants(String query) async {
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  Future<void> fetchPlants(String query, {bool loadMore = false}) async {
     if (query.isEmpty) {
       setState(() {
         plants = [];
         errorMessage = '';
+        currentPage = 1;
+        hasMore = true;
       });
       return;
     }
+
+    if (!loadMore) {
+      setState(() {
+        plants = [];
+        currentPage = 1;
+        hasMore = true;
+      });
+    }
+
+    if (plants.length >= maxPlants) {
+      setState(() {
+        hasMore = false;
+      });
+      return;
+    }
+
     setState(() {
       isLoading = true;
       errorMessage = '';
     });
 
     try {
+      final encodedQuery = Uri.encodeQueryComponent(query);
       final url = Uri.parse(
-          'https://trefle.io/api/v1/plants?token=$apiKey&q=$query');
+        'https://perenual.com/api/species-list?key=$apiKey&q=$encodedQuery&page=$currentPage',
+      );
+      print('Request URL: $url');
+
       final response = await http.get(url);
+
+      print('Status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonData = json.decode(response.body);
-        final List<dynamic> data = jsonData['data'];
+        final List<dynamic> data = jsonData['data'] ?? [];
+        final int total = jsonData['total'] ?? 0;
 
-        List<Plant> allPlants = data.map((json) => Plant.fromJson(json)).toList();
+        print('Fetched ${data.length} plants from API, Total: $total');
 
-        // Lokalno filtriranje po imenu (commonName ili scientificName)
-        final lowerQuery = query.toLowerCase();
-        List<Plant> filteredPlants = allPlants.where((plant) {
-          final common = plant.commonName?.toLowerCase() ?? '';
-          final scientific = plant.scientificName?.toLowerCase() ?? '';
-          return common.contains(lowerQuery) || scientific.contains(lowerQuery);
+        List<Plant> fetchedPlants = data.map((json) {
+          // Debug field types
+          print('Scientific name type: ${json['scientific_name'].runtimeType}');
+          print('Other name type: ${json['other_name']?.runtimeType}');
+          print('Sunlight type: ${json['sunlight']?.runtimeType}');
+          print('Origin type: ${json['origin']?.runtimeType}');
+          
+          return Plant.fromJson({
+            'id': json['id'],
+            'common_name': json['common_name'],
+            'scientific_name': json['scientific_name'],
+            'image_url': json['default_image']?['original_url'],
+            'family': json['family'],
+            'other_name': json['other_name'],
+            'cycle': json['cycle'],
+            'watering': json['watering'],
+            'sunlight': json['sunlight'],
+            'care_level': json['care_level'],
+            'description': json['description'],
+            'dimension': json['dimension'],
+            'origin': json['origin'],
+          });
         }).toList();
 
         setState(() {
-          plants = filteredPlants;
+          plants.addAll(fetchedPlants);
           isLoading = false;
+          if (fetchedPlants.isEmpty || plants.length >= total || plants.length >= maxPlants) {
+            hasMore = false;
+          }
           if (plants.isEmpty) {
-            errorMessage = 'No plants found for "$query".';
+            final mockData = [
+              {
+                'id': 1,
+                'common_name': 'Coconut Palm',
+                'scientific_name': 'Cocos nucifera',
+                'image_url': 'https://example.com/coconut.jpg',
+                'family': 'Arecaceae',
+                'other_name': ['Coco', 'Coconut Tree'],
+                'cycle': 'Perennial',
+                'watering': 'Moderate',
+                'sunlight': ['Full sun'],
+                'care_level': 'Moderate',
+                'description': 'A tropical palm producing coconuts.',
+                'dimension': 'Up to 100 ft tall',
+                'origin': ['Southeast Asia'],
+              },
+              {
+                'id': 2,
+                'common_name': 'Cocoa Tree',
+                'scientific_name': 'Theobroma cacao',
+                'image_url': 'https://example.com/cocoa.jpg',
+                'family': 'Malvaceae',
+                'other_name': ['Cacao'],
+                'cycle': 'Perennial',
+                'watering': 'Frequent',
+                'sunlight': ['Partial shade'],
+                'care_level': 'High',
+                'description': 'A small tree producing cocoa beans.',
+                'dimension': 'Up to 25 ft tall',
+                'origin': ['South America'],
+              },
+              {
+                'id': 3,
+                'common_name': 'Coco Yam',
+                'scientific_name': 'Colocasia esculenta',
+                'image_url': 'https://example.com/cocoyam.jpg',
+                'family': 'Araceae',
+                'other_name': ['Taro'],
+                'cycle': 'Perennial',
+                'watering': 'Frequent',
+                'sunlight': ['Partial sun'],
+                'care_level': 'Moderate',
+                'description': 'A tropical plant with edible roots.',
+                'dimension': 'Up to 6 ft tall',
+                'origin': ['Asia'],
+              },
+              {
+                'id': 4,
+                'common_name': 'Black-eyed Susan',
+                'scientific_name': 'Rudbeckia hirta',
+                'image_url': 'https://example.com/blackeyedsusan.jpg',
+                'family': 'Asteraceae',
+                'other_name': ['Gloriosa Daisy'],
+                'cycle': 'Biennial',
+                'watering': 'Average',
+                'sunlight': ['Full sun'],
+                'care_level': 'Low',
+                'description': 'A vibrant wildflower with yellow petals.',
+                'dimension': 'Up to 3 ft tall',
+                'origin': ['North America'],
+              },
+              {
+                'id': 5,
+                'common_name': 'Rose',
+                'scientific_name': 'Rosa spp.',
+                'image_url': 'https://example.com/rose.jpg',
+                'family': 'Rosaceae',
+                'other_name': ['Garden Rose'],
+                'cycle': 'Perennial',
+                'watering': 'Average',
+                'sunlight': ['Full sun'],
+                'care_level': 'Moderate',
+                'description': 'A classic flowering shrub.',
+                'dimension': 'Up to 6 ft tall',
+                'origin': ['Europe', 'Asia'],
+              },
+            ];
+            plants = mockData.map((json) => Plant.fromJson(json)).toList().take(maxPlants).toList();
+            errorMessage = 'No plants found for "$query". Showing sample data.';
           }
         });
       } else {
+        print('Falling back to mock data due to ${response.statusCode} error');
+        final mockData = [
+          {
+            'id': 1,
+            'common_name': 'Coconut Palm',
+            'scientific_name': 'Cocos nucifera',
+            'image_url': 'https://example.com/coconut.jpg',
+            'family': 'Arecaceae',
+            'other_name': ['Coco', 'Coconut Tree'],
+            'cycle': 'Perennial',
+            'watering': 'Moderate',
+            'sunlight': ['Full sun'],
+            'care_level': 'Moderate',
+            'description': 'A tropical palm producing coconuts.',
+            'dimension': 'Up to 100 ft tall',
+            'origin': ['Southeast Asia'],
+          },
+          {
+            'id': 2,
+            'common_name': 'Cocoa Tree',
+            'scientific_name': 'Theobroma cacao',
+            'image_url': 'https://example.com/cocoa.jpg',
+            'family': 'Malvaceae',
+            'other_name': ['Cacao'],
+            'cycle': 'Perennial',
+            'watering': 'Frequent',
+            'sunlight': ['Partial shade'],
+            'care_level': 'High',
+            'description': 'A small tree producing cocoa beans.',
+            'dimension': 'Up to 25 ft tall',
+            'origin': ['South America'],
+          },
+          {
+            'id': 3,
+            'common_name': 'Coco Yam',
+            'scientific_name': 'Colocasia esculenta',
+            'image_url': 'https://example.com/cocoyam.jpg',
+            'family': 'Araceae',
+            'other_name': ['Taro'],
+            'cycle': 'Perennial',
+            'watering': 'Frequent',
+            'sunlight': ['Partial sun'],
+            'care_level': 'Moderate',
+            'description': 'A tropical plant with edible roots.',
+            'dimension': 'Up to 6 ft tall',
+            'origin': ['Asia'],
+          },
+          {
+            'id': 4,
+            'common_name': 'Black-eyed Susan',
+            'scientific_name': 'Rudbeckia hirta',
+            'image_url': 'https://example.com/blackeyedsusan.jpg',
+            'family': 'Asteraceae',
+            'other_name': ['Gloriosa Daisy'],
+            'cycle': 'Biennial',
+            'watering': 'Average',
+            'sunlight': ['Full sun'],
+            'care_level': 'Low',
+            'description': 'A vibrant wildflower with yellow petals.',
+            'dimension': 'Up to 3 ft tall',
+            'origin': ['North America'],
+          },
+          {
+            'id': 5,
+            'common_name': 'Rose',
+            'scientific_name': 'Rosa spp.',
+            'image_url': 'https://example.com/rose.jpg',
+            'family': 'Rosaceae',
+            'other_name': ['Garden Rose'],
+            'cycle': 'Perennial',
+            'watering': 'Average',
+            'sunlight': ['Full sun'],
+            'care_level': 'Moderate',
+            'description': 'A classic flowering shrub.',
+            'dimension': 'Up to 6 ft tall',
+            'origin': ['Europe', 'Asia'],
+          },
+        ];
         setState(() {
-          errorMessage = 'Failed to load plants: ${response.statusCode}';
+          plants = mockData.map((json) => Plant.fromJson(json)).toList().take(maxPlants).toList();
+          errorMessage = 'API error (${response.statusCode}). Showing sample data.';
           isLoading = false;
+          hasMore = false;
         });
       }
     } catch (e) {
@@ -69,6 +283,30 @@ class _SearchPlantsScreenState extends State<SearchPlantsScreen> {
         errorMessage = 'Error fetching plants: $e';
         isLoading = false;
       });
+      print('Error: $e');
+    }
+  }
+
+  void _onSearchChanged(String value) {
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      query = value;
+      fetchPlants(query);
+    });
+  }
+
+  void _loadMore() {
+    if (!isLoading && hasMore) {
+      setState(() {
+        currentPage++;
+      });
+      fetchPlants(query, loadMore: true);
+    }
+  }
+
+  void _retry() {
+    if (query.isNotEmpty) {
+      fetchPlants(query);
     }
   }
 
@@ -82,27 +320,34 @@ class _SearchPlantsScreenState extends State<SearchPlantsScreen> {
           children: [
             TextField(
               decoration: InputDecoration(
-                hintText: 'Search plants...',
-                prefixIcon: Icon(Icons.search),
+                hintText: 'Search plants (e.g., coconut, black-eyed susan, rose)...',
+                prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
                 fillColor: Colors.white70,
               ),
-              onChanged: (value) {
-                query = value;
-                fetchPlants(query);
-              },
+              onChanged: _onSearchChanged,
             ),
             const SizedBox(height: 20),
             if (isLoading)
               const Center(child: CircularProgressIndicator())
             else if (errorMessage.isNotEmpty)
               Center(
-                child: Text(
-                  errorMessage,
-                  style: const TextStyle(color: Colors.red, fontSize: 16),
+                child: Column(
+                  children: [
+                    Text(
+                      errorMessage,
+                      style: const TextStyle(color: Colors.red, fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: _retry,
+                      child: const Text('Retry'),
+                    ),
+                  ],
                 ),
               )
             else if (plants.isEmpty)
@@ -115,12 +360,32 @@ class _SearchPlantsScreenState extends State<SearchPlantsScreen> {
             else
               Expanded(
                 child: ListView.builder(
-                  itemCount: plants.length,
+                  itemCount: plants.length + (hasMore ? 1 : 0),
                   itemBuilder: (context, index) {
+                    if (index == plants.length && hasMore) {
+                      return Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: ElevatedButton(
+                          onPressed: _loadMore,
+                          child: const Text('Load More'),
+                        ),
+                      );
+                    }
                     final plant = plants[index];
+                    print('Building plant: ${plant.commonName}');
                     return Card(
                       color: Colors.white70,
                       child: ListTile(
+                        leading: plant.imageUrl != null && plant.imageUrl!.isNotEmpty
+                            ? Image.network(
+                                plant.imageUrl!,
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.error),
+                              )
+                            : const Icon(Icons.image_not_supported),
                         title: Text(plant.commonName ?? 'No common name'),
                         subtitle: Text(plant.scientificName ?? 'No scientific name'),
                         onTap: () {

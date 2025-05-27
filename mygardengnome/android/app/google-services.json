@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "114233698117",
+    "project_id": "mygardengnome-16d3b",
+    "storage_bucket": "mygardengnome-16d3b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:114233698117:android:eceb0aad8eb5f8befec02c",
+        "android_client_info": {
+          "package_name": "com.example.mygardengnome"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtd52QEBqtkNPLFsjRUrfSjxe5WKRPdW8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

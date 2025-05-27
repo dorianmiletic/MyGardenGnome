@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mygardengnome/background.dart';
 
@@ -16,14 +18,41 @@ class _AddPlantScreenState extends State<AddPlantScreen> {
   String? description;
   String? imageUrl;
 
-  void _submitForm() {
+  final user = FirebaseAuth.instance.currentUser;
+
+  Future<void> _submitForm() async {
     if (_formKey.currentState?.validate() ?? false) {
       _formKey.currentState?.save();
 
-      // TODO: Add logic to save plant to Firebase
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Plant added successfully (not really yet!)')),
-      );
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not logged in.')),
+        );
+        return;
+      }
+
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user!.uid)
+            .collection('plants')
+            .add({
+          'commonName': commonName,
+          'scientificName': scientificName,
+          'description': description,
+          'imageUrl': imageUrl,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Plant added successfully!')),
+        );
+        _formKey.currentState?.reset();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add plant: $e')),
+        );
+      }
     }
   }
 
@@ -31,6 +60,7 @@ class _AddPlantScreenState extends State<AddPlantScreen> {
   Widget build(BuildContext context) {
     return BackgroundScaffold(
       title: 'MyGardenGnome',
+      showUserName: true,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(

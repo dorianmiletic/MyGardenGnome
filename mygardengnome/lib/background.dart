@@ -1,58 +1,58 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class BackgroundScaffold extends StatelessWidget {
   final String title;
   final Widget child;
+  final bool showUserName;
 
   const BackgroundScaffold({
     Key? key,
     required this.title,
     required this.child,
+    this.showUserName = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = user?.displayName ?? user?.email ?? '';
+
     return Scaffold(
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          // Background image
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/background.jpg',
-              fit: BoxFit.cover,
-            ),
+          Image.asset(
+            'assets/images/background.jpg', // ili tvoja pozadina
+            fit: BoxFit.cover,
           ),
-          // Title and gnome image
-          Positioned(
-            top: 50,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
                     style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Image.asset(
-                    'assets/images/gnome.jpg',
-                    width: 40,
-                    height: 40,
-                  ),
+                  if (showUserName && displayName.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        'Logged in as: $displayName',
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  Expanded(child: child),
                 ],
               ),
             ),
-          ),
-          // Main content
-          Positioned.fill(
-            top: 120, // leave space for header
-            child: child,
           ),
         ],
       ),
