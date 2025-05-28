@@ -1,13 +1,67 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mygardengnome/my_plants.dart';
 import 'package:mygardengnome/search_plants.dart';
 import 'package:mygardengnome/login_screen.dart';
 import 'package:mygardengnome/register_screen.dart';
 import 'package:mygardengnome/add_plant.dart';
+import 'package:mygardengnome/weather_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String _weatherStatus = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WeatherService.initNotifications();
+    _requestNotificationPermission();
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    final granted = await WeatherService.requestPermission();
+    if (!granted) {
+      setState(() {
+        _weatherStatus = 'Dozvola za notifikacije nije odobrena!';
+      });
+    } else {
+      setState(() {
+        _weatherStatus = 'Dozvola za notifikacije odobrena.';
+      });
+    }
+  }
+
+  Future<void> _simulateRain() async {
+    try {
+      await WeatherService.simulateRainNotification();
+      setState(() {
+        _weatherStatus = 'Test notifikacija poslana!';
+      });
+    } catch (e) {
+      setState(() {
+        _weatherStatus = 'Greška prilikom slanja test notifikacije: $e';
+      });
+    }
+  }
+
+  Future<void> _checkRain() async {
+    try {
+      await WeatherService.checkRainAndNotify();
+      setState(() {
+        _weatherStatus = 'Provjera vremena izvršena (ako pada kiša, dobit ćete notifikaciju)';
+      });
+    } catch (e) {
+      setState(() {
+        _weatherStatus = 'Greška prilikom provjere vremena: $e';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +76,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          // Title and gnome image
+          // Title, Gnome, and Auth Buttons or Welcome Text
           Positioned(
             top: 50,
             left: 0,
@@ -30,10 +84,9 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               children: [
                 Row(
-                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    const Text(
                       'MyGardenGnome',
                       style: TextStyle(
                         fontSize: 32,
@@ -41,7 +94,7 @@ class HomeScreen extends StatelessWidget {
                         color: Colors.black,
                       ),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Image.asset(
                       'assets/images/gnome.jpg',
                       width: 40,
@@ -49,30 +102,32 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LoginScreen()),
-                        );
-                      },
-                      child: Text('Login'),
-                    ),
-                    SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                        );
-                      },
-                      child: Text('Register'),
-                    ),
-                  ],
+                const SizedBox(height: 16),
+                StreamBuilder<User?>(
+                  stream: FirebaseAuth.instance.authStateChanges(),
+                  builder: (context, snapshot) {
+                    final user = snapshot.data;
+                    if (user == null) {
+                      // Only Login button shown if not logged in (no Register button)
+                      return ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          );
+                        },
+                        child: const Text('Login'),
+                      );
+                    } else {
+                      return Text(
+                        'Welcome, ${user.displayName ?? user.email ?? 'User'}!',
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                        ),
+                      );
+                    }
+                  },
                 ),
               ],
             ),
@@ -86,11 +141,11 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => SearchPlantsScreen()),
+                  MaterialPageRoute(builder: (_) => const SearchPlantsScreen()),
                 );
               },
               child: Row(
-                children: [
+                children: const [
                   Icon(Icons.search, color: Colors.red),
                   SizedBox(width: 8),
                   Text('Search for plants', style: TextStyle(color: Colors.black)),
@@ -107,7 +162,7 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => MyPlantsScreen()),
+                  MaterialPageRoute(builder: (_) => const MyPlantsScreen()),
                 );
               },
               child: Row(
@@ -118,32 +173,100 @@ class HomeScreen extends StatelessWidget {
                     height: 24,
                     color: Colors.purple,
                   ),
-                  SizedBox(width: 8),
-                  Text('My plants', style: TextStyle(color: Colors.black)),
+                  const SizedBox(width: 8),
+                  const Text('My plants', style: TextStyle(color: Colors.black)),
                 ],
               ),
             ),
           ),
 
-          // Button 3 - Add Plant
+          // Centered Test and Check buttons + status text
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  onPressed: _simulateRain,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueGrey[700],
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  child: const Text('Testiraj API (Simuliraj kišu)'),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: _checkRain,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[700],
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  child: const Text('Provjeri kišu'),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _weatherStatus,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Bottom buttons - Add Plant and Logout (if logged in)
           Positioned(
-            bottom: 20,
+            bottom: 60,
             left: 20,
             right: 20,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => AddPlantScreen()),
+            child: StreamBuilder<User?>(
+              stream: FirebaseAuth.instance.authStateChanges(),
+              builder: (context, snapshot) {
+                final user = snapshot.data;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const AddPlantScreen()),
+                            );
+                          },
+                          child: Row(
+                            children: const [
+                              Icon(Icons.add, color: Colors.blue),
+                              SizedBox(width: 8),
+                              Text('Add your plant', style: TextStyle(color: Colors.black)),
+                            ],
+                          ),
+                        ),
+                        if (user != null)
+                          ElevatedButton(
+                            onPressed: () async {
+                              await FirebaseAuth.instance.signOut();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Logged out')),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red[700],
+                            ),
+                            child: const Text('Logout'),
+                          ),
+                      ],
+                    ),
+                  ],
                 );
               },
-              child: Row(
-                children: [
-                  Icon(Icons.add, color: Colors.blue),
-                  SizedBox(width: 8),
-                  Text('Add your plant', style: TextStyle(color: Colors.black)),
-                ],
-              ),
             ),
           ),
         ],

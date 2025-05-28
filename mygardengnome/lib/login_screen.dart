@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'background.dart';
 import 'package:mygardengnome/home_screen.dart';
+import 'package:mygardengnome/register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -76,8 +77,12 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () =>
-                    Navigator.pushNamed(context, '/register'),
+                onPressed: () {
+            Navigator.push(
+                context,
+               MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                  );
+                  },
                 child: const Text("Don't have an account? Register here"),
               ),
             ],
