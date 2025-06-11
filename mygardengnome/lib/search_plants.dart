@@ -354,7 +354,7 @@ class _SearchPlantsScreenState extends State<SearchPlantsScreen> {
               const Center(
                 child: Text(
                   'Start typing to search plants.',
-                  style: TextStyle(fontSize: 16, color: Colors.black54),
+                  style: TextStyle(fontSize: 16, color: Colors.black54,backgroundColor: Colors.white70),
                 ),
               )
             else

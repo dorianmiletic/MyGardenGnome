@@ -21,21 +21,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WeatherService.initNotifications();
-    _requestNotificationPermission();
+    
   }
 
-  Future<void> _requestNotificationPermission() async {
-    final granted = await WeatherService.requestPermission();
-    if (!granted) {
-      setState(() {
-        _weatherStatus = 'Dozvola za notifikacije nije odobrena!';
-      });
-    } else {
-      setState(() {
-        _weatherStatus = 'Dozvola za notifikacije odobrena.';
-      });
-    }
-  }
+  
 
   Future<void> _simulateRain() async {
     try {
@@ -182,42 +171,49 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Centered Test and Check buttons + status text
           Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ElevatedButton(
-                  onPressed: _simulateRain,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueGrey[700],
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  ),
-                  child: const Text('Testiraj API (Simuliraj kišu)'),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: _checkRain,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[700],
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  ),
-                  child: const Text('Provjeri kišu'),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _weatherStatus,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
+  child: Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      ElevatedButton(
+        onPressed: _simulateRain,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        ),
+        child: const Text(
+          'Testiraj API (Simuliraj kišu)',
+          style: TextStyle(color: Colors.black),
+        ),
+      ),
+      const SizedBox(height: 12),
+      ElevatedButton(
+        onPressed: _checkRain,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        ),
+        child: const Text(
+          'Provjeri kišu',
+          style: TextStyle(color: Colors.black),
+        ),
+      ),
+      const SizedBox(height: 20),
+      if (_weatherStatus.isNotEmpty)
+  Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.black.withOpacity(0.6),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Text(
+      _weatherStatus,
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      textAlign: TextAlign.center,
+    ),
+  ),
+    ],
+  ),
+),
 
           // Bottom buttons - Add Plant and Logout (if logged in)
           Positioned(
